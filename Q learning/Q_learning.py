@@ -10,28 +10,28 @@ class PlayerQL(Agent):
         self.initial_step_size = step_size
         self.discount_rate = discount_rate # discount rate for future rewards
         self.scheduler = scheduler # scheduler for step-size during training
-        self.step_size_history = [] # step-size throught the training
+        self.step_size_history = [] # step-size throught the training   #REMOVE
 
-    def select_action(self, training_phase = True):
-        '''epsilon-greedy action selection in a given state
-        with respect to current state-action values'''
-        # for hand values less than 12 always hit
-        if self.hand.value <= 11:
-            return 'hit'
-        # during test phase the agent always chooses greedy action
-        epsilon = self.epsilon if training_phase else 0
-        # exploration vs. exploitation decision
-        if choice([0,1], p = [epsilon, 1 - epsilon]) == 0:
-            # random action - exploration
-            return choice(['hit', 'stand'], p = [0.5, 0.5])
-        else:
-            # greedy action - exploitation
-            if self.values[self.state]['hit'] > self.values[self.state]['stand']:
-                return 'hit'
-            elif self.values[self.state]['hit'] < self.values[self.state]['stand']:
-                return 'stand'
-            else:
-                return choice(['hit', 'stand'], p = [0.5, 0.5])
+    # def select_action(self, training_phase = True):
+    #     '''epsilon-greedy action selection in a given state
+    #     with respect to current state-action values'''
+    #     # for hand values less than 12 always hit
+    #     if self.hand.value <= 11:
+    #         return 'hit'
+    #     # during test phase the agent always chooses greedy action
+    #     epsilon = self.epsilon if training_phase else 0
+    #     # exploration vs. exploitation decision
+    #     if choice([0,1], p = [epsilon, 1 - epsilon]) == 0:
+    #         # random action - exploration
+    #         return choice(['hit', 'stand'], p = [0.5, 0.5])
+    #     else:
+    #         # greedy action - exploitation
+    #         if self.values[self.state]['hit'] > self.values[self.state]['stand']:
+    #             return 'hit'
+    #         elif self.values[self.state]['hit'] < self.values[self.state]['stand']:
+    #             return 'stand'
+    #         else:
+    #             return choice(['hit', 'stand'], p = [0.5, 0.5])
 
     def play(self, epoch = -1, training_phase = True):
         '''simulation of one episode/hand'''
@@ -39,9 +39,30 @@ class PlayerQL(Agent):
         if training_phase:
             self.hands_played += 1
             self.step_size = self.scheduler(epoch)
-            self.step_size_history.append(self.step_size)
+            self.step_size_history.append(self.step_size) #REMOVE
         while self.hand.value <= 21:
-            action = self.select_action(training_phase)
+            #action = self.select_action(training_phase)
+            action = ''
+
+            # for hand values less than 12 always hit
+            if self.hand.value <= 11:
+                action = 'hit'
+            # during test phase the agent always chooses greedy action
+            epsilon = self.epsilon if training_phase else 0
+            # exploration vs. exploitation decision
+            if choice([0,1], p = [epsilon, 1 - epsilon]) == 0:
+                # random action - exploration
+                action = choice(['hit', 'stand'], p = [0.5, 0.5])
+            else:
+                # greedy action - exploitation
+                
+                if self.values[self.state + ('hit',)] > self.values[self.state + ('stand',)]:
+                    action = 'hit'
+                elif self.values[self.state + ('hit',)] < self.values[self.state + ('stand',)]:
+                    action = 'stand'
+                else:
+                    action = choice(['hit', 'stand'], p = [0.5, 0.5])
+
             state = self.state # state before taking action
             if action == 'stand':
                 break
