@@ -6,108 +6,111 @@ import seaborn as sns
 
 
 class Agent:
-    '''Base class for implementation of the player in the Blackjack game'''
-    def __init__(self, values_type = 'state'):
+    """
+    A base class for implementing a player in the Blackjack game.
+    It supports both state-value and action-value based learning.
+    """
+
+    def __init__(self, values_type='state'):
         self.hand = Hand()
-        self.state = (0, False, 0)
+        self.state = (0, False, 0)  # (hand value, usable ace, dealer's card)
         self.hands_played = 0
         self.hands_won = 0
         self.hands_drawn = 0
-        self.cards = list(range(2,12)) + [10]*3 # list of possible card values
-        # type of values used for learning: state-values or action-values
+        self.cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]  # Card values (10 repeated for face cards)
         self.values_type = 'state' if values_type == 'state' else 'action'
         self.values = self.initialize_values()
 
     def deal_card(self):
-        '''add new card to player's hand and set new state'''
+        """
+        Adds a new card to the player's hand and updates the state.
+        """
         self.hand.add_card(choice(self.cards))
         self.state = (self.hand.value, self.hand.usable_ace, self.state[2])
 
     def set_state(self, state):
+        """
+        Sets the current state of the agent.
+        :param state: A tuple representing the state (hand value, usable ace, dealer's card).
+        """
         self.state = state
-        self.hand.value = state[0]
-        self.hand.usable_ace = state[1]
+        self.hand.value, self.hand.usable_ace = state[:2]
 
     def initialize_values(self):
-        '''initialize random values for state-values or state-action pairs'''
-        values = dict()
-        for i in range(2,22):
-            for j in range(2, 12):
-                value1 = value2 = None
+        """
+        Initializes random values for state-values or action-values.
+        :return: A dictionary of initialized values.
+        """
+        values = {}
+        for hand_value in range(2, 22):
+            for dealer_card in range(2, 12):
                 if self.values_type == 'state':
-                    value1 = round(normal(0,0.1), 2)
-                    value2 = round(normal(0,0.1), 2)
+                    values[(hand_value, True, dealer_card)] = round(normal(0, 0.1), 2)
+                    values[(hand_value, False, dealer_card)] = round(normal(0, 0.1), 2)
                 else:
-                    value1 = {'hit':round(normal(0,0.1), 2), 'stand': round(normal(0,0.1), 2)}
-                    value2 = {'hit':round(normal(0,0.1), 2), 'stand': round(normal(0,0.1), 2)}
-                if i >= 11:
-                    values[(i, True, j)] = value1
-                values[(i, False, j)] = value2
+                    action_values = {'hit': round(normal(0, 0.1), 2), 'stand': round(normal(0, 0.1), 2)}
+                    values[(hand_value, True, dealer_card)] = action_values
+                    values[(hand_value, False, dealer_card)] = action_values.copy()
         return values
 
 
 class Dealer:
+    """
+    Represents the dealer in a game of Blackjack. 
+    The dealer follows a fixed policy for playing the hand.
+    """
+
     def __init__(self):
         self.hand = Hand()
-        self.cards = list(range(2,12)) + [10]*3 # set of possible card values
+        self.cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]  # Card values (10 repeated for face cards)
 
-    def play(self, hit_soft_17 = False):
-        '''dealer play by fixed policy, determined by the rules'''
-        active = True
-        while active:
-            # dealer must hit
-            if self.hand.value <= 16:
+    def play(self, hit_soft_17=False):
+        """
+        Executes the dealer's play according to the game rules.
+        :param hit_soft_17: A boolean indicating whether the dealer hits on a soft 17 (hand value 17 with a usable ace).
+        :return: The final value of the dealer's hand after playing.
+        """
+        while True:
+            if self.hand.value < 17 or (hit_soft_17 and self.hand.value == 17 and self.hand.usable_ace):
                 self.hand.add_card(choice(self.cards))
-            elif self.hand.value == 17 and self.hand.usable_ace:
-                # dealer hit's on soft 17 (hand value 17 and usable Ace)
-                if hit_soft_17:
-                    self.hand.add_card(choice(self.cards))
-                else:
-                    active = False
             else:
-                active = False
+                break
         return self.hand.value
 
-
 class Hand:
+    """
+    Represents a hand of cards in Blackjack.
+    Keeps track of the hand's value and whether it contains a usable ace.
+    """
+
     def __init__(self):
         self.value = 0
         self.usable_ace = False
 
     def add_card(self, card_value):
-        '''adding new card to the hand, result of hit action'''
-        # if new card isn't Ace
-        if card_value <= 10:
+        """
+        Adds a new card to the hand.
+        :param card_value: The value of the card to add.
+        """
+        if card_value != 11:  # For non-Ace cards
             self.value += card_value
-            if self.usable_ace:
-                # if player/dealer bust with usable Ace, Ace takes value 1
-                if self.value > 21:
-                    self.value -= 10
-                    self.usable_ace = False
-        else:
-            if self.usable_ace:
-                # one Ace will take value of 1
-                if self.value + 1 <= 21:
-                    self.value += 1
-                else:
-                    # two Aces, both have to take value of 1
-                    # subtract 10 from one Ace, add 1 for new Ace
-                    self.value -= 9
-                    self.usable_ace = False
-            else:
-                if self.value + 11 <= 21:
-                    # Ace can be used with value of 11
-                    self.value += 11
-                    self.usable_ace = True
-                else:
-                    # Ace can't be used with value od 11
-                    self.value += 1
-                    self.usable_ace = False
+        else:  # Handling an Ace
+            if self.value + 11 > 21:  # Ace counts as 1 if 11 would cause bust
+                self.value += 1
+            else:  # Ace counts as 11
+                self.value += 11
+                self.usable_ace = True
+
+        if self.value > 21 and self.usable_ace:  # Adjust if bust with usable Ace
+            self.value -= 10
+            self.usable_ace = False
 
     def clear_hand(self):
+        """
+        Resets the hand to its initial state.
+        """
         self.value = 0
         self.usable_ace = False
-
 
 class Environment():
     '''game environment for training agent'''
