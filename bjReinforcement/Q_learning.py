@@ -8,11 +8,7 @@ class PlayerQL(Agent):
         self.alpha = alpha
         self.gamma = gamma
 
-        
     def play(self, training_flag):
-        # Play a single hand or episode
-
-
         while self.hand.value <= 21:
             action = ''
 
@@ -42,8 +38,3 @@ class PlayerQL(Agent):
                     max_value = max(self.values[self.state + ('hit',)], self.values[self.state + ('stand',)])
                     self.values[state + (action,)] += self.alpha * (self.gamma * max_value - self.values[state + (action,)])
         return self.hand.value
-
-    def propagate_reward(self, reward):
-
-        if self.hand.value <= 21:
-            self.values[self.state + ('stand',)] += self.alpha * (reward - self.values[self.state + ('stand',)])

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 
-
 class Agent:
     """
     A base class for implementing a player in the Blackjack game.
@@ -112,8 +111,6 @@ class Environment():
         self.dealer = Dealer()
         self.player = player
 
-
-        
     def set_game(self):
         '''prepare new hand/episode'''
         cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]
@@ -151,7 +148,7 @@ class Environment():
             reward = -1
         return reward
 
-    def train(self, num_epochs):
+    def q_train(self, num_epochs):
         '''training loop, train agent for a fixed number of epochs'''
         for _ in range(num_epochs):
             self.set_game()
@@ -161,11 +158,38 @@ class Environment():
             
             if self.player.hand.value <= 21:
                 self.player.values[self.player.state + ('stand',)] += self.player.alpha * (reward - self.player.values[self.player.state + ('stand',)])
-     
 
+    def mc_train(self, epochs = 100):
+        '''training loop, train agent for a fixed number of epochs'''
+        for _ in range(epochs):
+            self.set_game()
+            player_result = self.player.play(training_flag = 1)
+            dealer_result = self.dealer.play()
+            reward = self.evaluate_hand(player_result, dealer_result)
+            self.player.propagate_reward(reward)
+    # Add this method to the Environment class in classes.py
 
+    def td_train(self, epochs=50000):
+        for _ in range(epochs):
+            self.set_game()
+            player_result = self.player.play(training_flag=True)
+            dealer_result = self.dealer.play()
+            reward = self.evaluate_hand(player_result, dealer_result)
 
+            if self.player.hand.value <= 21:
+                self.player.update_values(self.player.state, 'stand', reward, None)
+                
+    def sarsa_train(self, num_epochs=50000):
+        for _ in range(num_epochs):
+            self.set_game()
+            player_result = self.player.play(training_flag = 1)
+            dealer_result = self.dealer.play()
+            reward = self.evaluate_hand(player_result, dealer_result)
+            
+            if self.player.hand.value <= 21:
+                self.player.values[self.player.state + ('stand',)] += self.player.alpha * (reward - self.player.values[self.player.state + ('stand',)])
 
+                        
     def test(self, num_epochs):
         '''test agent's performance'''
         wins = 0
@@ -176,3 +200,5 @@ class Environment():
             if self.evaluate_hand(player_result, dealer_result) == 1:
                 wins += 1
         return wins / num_epochs
+    
+    
